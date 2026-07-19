@@ -1,0 +1,161 @@
+/* 
+  Maison & Atelier Digital - Option A: "Silencio Mineral" (Wabi-Sabi)
+  Sistema de Diseño - Tokens de Color, Tipografía y Estructura Base
+*/
+
+:root {
+  /* Paleta Wabi-Sabi: Arena cálida, lino, carbón y plata natural */
+  --bg-color: #f7f4ed;            /* Arena cálida ultra-clara */
+  --text-color: #2a2927;          /* Carbón de basalto suave */
+  --text-muted: #726e67;          /* Gris lino lavado */
+  --border-color: #e2ded5;        /* Borde orgánico claro */
+  --accent-color: #928b81;        /* Plata envejecida / Limo */
+  --accent-light: #ece7dc;        /* Tonalidad clara de resalte */
+  --gold-accent: #bfa38a;         /* Ocre suave de sol poniente */
+  
+  /* Fuentes de lujo editorial */
+  --font-serif: 'Cardo', Georgia, serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  
+  /* Transiciones elegantes */
+  --transition-smooth: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  
+  /* Estructura */
+  --max-width: 1440px;
+}
+
+/* Modo Administrativo Oscuro (Backstage) */
+.dark-theme {
+  --bg-color: #121110;
+  --text-color: #f2ede4;
+  --text-muted: #9c958b;
+  --border-color: #2d2b28;
+  --accent-color: #8c8376;
+  --accent-light: #1e1d1b;
+  --gold-accent: #d1bba7;
+}
+
+/* Reset y Base */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-sans);
+  font-weight: 300;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.8s ease, color 0.8s ease;
+}
+
+/* Tipografía de Título */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Quitar scrollbars por defecto pero mantener funcionalidad */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
+/* Animaciones Globales */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOnly {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-only {
+  animation: fadeOnly 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Utilidades Flat y Minimalistas */
+.flat-container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 4rem;
+}
+
+@media (max-width: 768px) {
+  .flat-container {
+    padding: 0 1.5rem;
+  }
+}
+
+/* Efecto de Vidrio Esmerilado Suave (Wabi-Sabi Glass) */
+.glass-effect {
+  background: rgba(247, 244, 237, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.dark-theme .glass-effect {
+  background: rgba(18, 17, 16, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Controles Multimedia Sin Reproductor */
+video::-webkit-media-controls {
+  display: none !important;
+}
+
+/* Ocultar Navegación Hasta que sea necesaria */
+.nav-hidden {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
+  transition: var(--transition-smooth);
+}
+
+.nav-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+  transition: var(--transition-smooth);
+}
