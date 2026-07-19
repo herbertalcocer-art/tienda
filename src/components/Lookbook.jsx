@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getProductsByRoom } from '../dataService';
 import { playPageFlip, playClothRustle } from '../audioEffects';
-import { ArrowLeft, MessageCircle, Info, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Info, ChevronLeft, ChevronRight, Eye, SlidersHorizontal, X } from 'lucide-react';
 
 export default function Lookbook({ roomSlug, navigateTo, openManifiesto }) {
   const [products, setProducts] = useState([]);
@@ -9,7 +9,14 @@ export default function Lookbook({ roomSlug, navigateTo, openManifiesto }) {
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [hoveredCardId, setHoveredCardId] = useState(null);
-  
+
+  // P2.2 — Estado de filtros del catálogo
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterStock, setFilterStock] = useState('all'); // 'all' | 'available' | 'sold'
+
+  // P2.1 — Debounce de audio: evita acumulación de sonidos al recorrer el grid
+  const audioDebounceRef = useRef(null);
+
   // Guardar posición de scroll para regresar
   const scrollPositionRef = useRef(0);
 
@@ -25,53 +32,64 @@ export default function Lookbook({ roomSlug, navigateTo, openManifiesto }) {
     loadProducts();
   }, [roomSlug]);
 
+  // P2.2 — Productos filtrados según selección activa
+  const filteredProducts = products.filter(p => {
+    if (filterStock === 'available') return p.in_stock;
+    if (filterStock === 'sold') return !p.in_stock;
+    return true;
+  });
+
   const handleSelectProduct = (product) => {
-    // Guardar el scroll actual antes de cambiar de vista
     scrollPositionRef.current = window.scrollY;
-    
     playPageFlip();
     setSelectedProduct(product);
     setActiveMediaIndex(0);
-    window.scrollTo(0, 0); // Ir al inicio en la vista detallada
+    window.scrollTo(0, 0);
   };
 
   const handleBackToGrid = () => {
     playPageFlip();
     setSelectedProduct(null);
-    
-    // Restaurar posición de scroll después del renderizado
     setTimeout(() => {
       window.scrollTo(0, scrollPositionRef.current);
     }, 50);
   };
 
   const handleNextPrevDetail = (direction) => {
-    if (products.length <= 1) return;
-    const currentIndex = products.findIndex(p => p.id === selectedProduct.id);
+    if (filteredProducts.length <= 1) return;
+    const currentIndex = filteredProducts.findIndex(p => p.id === selectedProduct.id);
     let nextIndex = currentIndex;
-    
+
     if (direction === 'next') {
-      nextIndex = (currentIndex + 1) % products.length;
+      nextIndex = (currentIndex + 1) % filteredProducts.length;
     } else {
-      nextIndex = (currentIndex - 1 + products.length) % products.length;
+      nextIndex = (currentIndex - 1 + filteredProducts.length) % filteredProducts.length;
     }
 
     playPageFlip();
-    setSelectedProduct(products[nextIndex]);
+    setSelectedProduct(filteredProducts[nextIndex]);
     setActiveMediaIndex(0);
   };
 
-  const handleCardMouseEnter = (id) => {
+  // P2.1 — Audio con debounce de 500ms para evitar superposición en hover rápido del grid
+  const handleCardMouseEnter = useCallback((id) => {
     setHoveredCardId(id);
-    if (roomSlug === 'boutique') {
-      playClothRustle();
-    } else {
-      playPageFlip();
-    }
-  };
+    if (audioDebounceRef.current) clearTimeout(audioDebounceRef.current);
+    audioDebounceRef.current = setTimeout(() => {
+      if (roomSlug === 'boutique') {
+        playClothRustle();
+      } else {
+        playPageFlip();
+      }
+    }, 500);
+  }, [roomSlug]);
 
   const handleCardMouseLeave = () => {
     setHoveredCardId(null);
+    if (audioDebounceRef.current) {
+      clearTimeout(audioDebounceRef.current);
+      audioDebounceRef.current = null;
+    }
   };
 
   // Saludo dinámico según la hora del día para el Concierge Digital
@@ -111,7 +129,7 @@ export default function Lookbook({ roomSlug, navigateTo, openManifiesto }) {
         <p className="text-sm text-[var(--text-muted)] max-w-md mb-8 italic">
           "Aún no se han revelado las piezas de esta colección. La paciencia acompaña a la belleza."
         </p>
-        <button 
+        <button
           onClick={() => navigateTo('vestibulo')}
           className="px-6 py-2 border text-xs uppercase tracking-widest hover:bg-[var(--text-color)] hover:text-[var(--bg-color)] transition-all"
           style={{ borderColor: 'var(--text-color)' }}
@@ -125,14 +143,17 @@ export default function Lookbook({ roomSlug, navigateTo, openManifiesto }) {
   // ================= RENDERIZAR VISTA DE DETALLE DEL PRODUCTO =================
   if (selectedProduct) {
     const currentMediaUrl = selectedProduct.media_urls[activeMediaIndex] || '';
-    const isVideo = currentMediaUrl.match(/\.(mp4|webm|ogg)/i) || 
-                    (currentMediaUrl.includes('storage.googleapis.com') && currentMediaUrl.includes('/videos/'));
+    const isVideo = currentMediaUrl.match(/\.(mp4|webm|ogg)/i) ||
+      (currentMediaUrl.includes('storage.googleapis.com') && currentMediaUrl.includes('/videos/'));
+
+    // P2.5 — Las piezas adquiridas permiten ver el detalle pero sin botón de solicitud
+    const isAvailable = selectedProduct.in_stock;
 
     return (
       <div className="h-screen w-screen flex flex-col md:flex-row relative bg-[var(--bg-color)] select-none animate-fade-only">
-        
+
         {/* Botón de Regreso al Catálogo */}
-        <button 
+        <button
           onClick={handleBackToGrid}
           className="absolute top-8 left-8 z-30 flex items-center gap-2 text-[10px] tracking-widest uppercase text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors py-2"
         >
@@ -141,76 +162,91 @@ export default function Lookbook({ roomSlug, navigateTo, openManifiesto }) {
         </button>
 
         {/* DETALLE: Izquierda (Información y Contemplación) */}
-        <div 
+        <div
           className="w-full md:w-1/2 h-1/2 md:h-full flex flex-col justify-between p-8 md:p-16 pt-20 md:pt-28 border-b md:border-b-0 md:border-r relative z-10"
           style={{ borderColor: 'var(--border-color)' }}
         >
           {/* Header de Ficha */}
           <div className="flex justify-between items-center text-[10px] tracking-[0.3em] uppercase text-[var(--text-muted)]">
             <span>Colección {roomSlug === 'boutique' ? 'Boutique' : 'Joyería'}</span>
-            <span className="font-serif italic font-normal">Pieza Singular</span>
+            <span className="font-serif italic font-normal">
+              {isAvailable ? 'Pieza Singular' : 'Pieza Adquirida'}
+            </span>
           </div>
 
           {/* Cuerpo Editorial */}
           <div className="my-auto max-w-md animate-fade-in" key={selectedProduct.id}>
-            <h2 
+            <h2
               className="text-4xl md:text-5xl font-serif text-[var(--text-color)] mb-6 leading-tight"
               style={{ fontFamily: 'var(--font-serif)', fontWeight: '300' }}
             >
               {selectedProduct.name}
             </h2>
-            
+
             <p className="text-sm md:text-base text-[var(--text-muted)] font-serif italic leading-relaxed text-justify mb-8 font-light">
               "{selectedProduct.poetic_description}"
             </p>
 
             <div className="flex justify-between items-center mb-8 border-b pb-4" style={{ borderColor: 'var(--border-color)' }}>
               <div>
-                <span className="text-[10px] tracking-[0.2em] uppercase text-[var(--text-muted)] block mb-1">Precio Estimado</span>
+                <span className="text-[10px] tracking-[0.2em] uppercase text-[var(--text-muted)] block mb-1">
+                  {isAvailable ? 'Precio Estimado' : 'Valor de Referencia'}
+                </span>
                 <span className="text-sm md:text-md font-serif tracking-widest text-[var(--text-color)]">
-                  {selectedProduct.price ? `${parseFloat(selectedProduct.price).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })} CLP` : 'Consultar Valor'}
+                  {selectedProduct.price
+                    ? `${parseFloat(selectedProduct.price).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })} CLP`
+                    : 'Consultar Valor'}
                 </span>
               </div>
-              
+
               <div className="text-right">
-                <span className="text-[10px] tracking-[0.2em] uppercase text-[var(--text-muted)] block mb-1">Disponibilidad</span>
-                <span className={`text-xs tracking-widest uppercase ${selectedProduct.in_stock ? 'text-[var(--gold-accent)]' : 'text-red-400 font-light'}`}>
-                  {selectedProduct.in_stock ? 'Disponible en Atelier' : 'Adquirido / Pieza Única'}
+                <span className="text-[10px] tracking-[0.2em] uppercase text-[var(--text-muted)] block mb-1">Estado</span>
+                <span className={`text-xs tracking-widest uppercase ${isAvailable ? 'text-[var(--gold-accent)]' : 'text-[var(--text-muted)] font-light'}`}>
+                  {isAvailable ? 'Disponible en Atelier' : 'Adquirida · Pieza Única'}
                 </span>
               </div>
             </div>
 
-            {/* Concierge Digital Botón */}
-            <a
-              href={buildWhatsAppLink(selectedProduct)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center w-full gap-3 px-6 py-3 border text-xs tracking-widest uppercase hover:bg-[var(--text-color)] hover:text-[var(--bg-color)] transition-all duration-500 ease-out"
-              style={{ borderColor: 'var(--text-color)', backgroundColor: 'transparent' }}
-            >
-              <MessageCircle size={14} />
-              <span>Solicitar esta pieza</span>
-            </a>
+            {/* P2.5 — Botón de consulta solo para piezas disponibles */}
+            {isAvailable ? (
+              <a
+                href={buildWhatsAppLink(selectedProduct)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center w-full gap-3 px-6 py-3 border text-xs tracking-widest uppercase hover:bg-[var(--text-color)] hover:text-[var(--bg-color)] transition-all duration-500 ease-out"
+                style={{ borderColor: 'var(--text-color)', backgroundColor: 'transparent' }}
+              >
+                <MessageCircle size={14} />
+                <span>Solicitar esta pieza</span>
+              </a>
+            ) : (
+              <div
+                className="w-full px-6 py-3 border text-xs tracking-widest uppercase text-center text-[var(--text-muted)] font-light"
+                style={{ borderColor: 'var(--border-color)', borderStyle: 'dashed' }}
+              >
+                Esta pieza encontró su destino
+              </div>
+            )}
           </div>
 
           {/* Navegación Base en Detalle */}
           <div className="flex justify-between items-center text-xs tracking-widest uppercase text-[var(--text-muted)]">
-            <button 
+            <button
               onClick={() => handleNextPrevDetail('prev')}
               className="hover:text-[var(--text-color)] flex items-center gap-2 py-2"
             >
               <ChevronLeft size={16} />
               <span>Anterior</span>
             </button>
-            
-            <button 
-              onClick={openManifiesto} 
+
+            <button
+              onClick={openManifiesto}
               className="text-[10px] hover:text-[var(--gold-accent)] flex items-center gap-1 py-2 font-light"
             >
               Filosofía
             </button>
 
-            <button 
+            <button
               onClick={() => handleNextPrevDetail('next')}
               className="hover:text-[var(--text-color)] flex items-center gap-2 py-2"
             >
@@ -241,13 +277,13 @@ export default function Lookbook({ roomSlug, navigateTo, openManifiesto }) {
                 alt={selectedProduct.name}
                 loading="lazy"
                 className="w-full h-full object-cover opacity-85"
-                style={{ 
-                  filter: 'contrast(1.02) brightness(0.95)',
+                style={{
+                  filter: isAvailable ? 'contrast(1.02) brightness(0.95)' : 'contrast(1.0) brightness(0.75) grayscale(0.3)',
                   transition: 'opacity 1s ease, transform 3s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}
               />
             )}
-            
+
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20 pointer-events-none" />
           </div>
 
@@ -257,9 +293,8 @@ export default function Lookbook({ roomSlug, navigateTo, openManifiesto }) {
                 <button
                   key={mediaIdx}
                   onClick={() => setActiveMediaIndex(mediaIdx)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    activeMediaIndex === mediaIdx ? 'w-6 bg-[var(--gold-accent)]' : 'w-1.5 bg-white/40'
-                  }`}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${activeMediaIndex === mediaIdx ? 'w-6 bg-[var(--gold-accent)]' : 'w-1.5 bg-white/40'
+                    }`}
                 />
               ))}
             </div>
@@ -277,98 +312,182 @@ export default function Lookbook({ roomSlug, navigateTo, openManifiesto }) {
   return (
     <div className="min-h-screen bg-[var(--bg-color)] py-24 md:py-32 select-none animate-fade-only">
       <div className="flat-container">
-        
+
         {/* Encabezado de la Colección */}
-        <header className="mb-16 border-b pb-8" style={{ borderColor: 'var(--border-color)' }}>
-          <span className="text-[10px] tracking-[0.4em] uppercase text-[var(--text-muted)] block mb-2">
-            Colección {roomSlug === 'boutique' ? 'Alta Costura' : 'Plata Fina'}
-          </span>
-          <h2 className="text-4xl md:text-5xl font-serif text-[var(--text-color)] mb-4">
-            {roomSlug === 'boutique' ? 'Boutique' : 'Joyería'}
-          </h2>
-          <p className="text-sm md:text-base text-[var(--text-muted)] font-serif italic max-w-xl font-light">
-            {roomSlug === 'boutique' 
-              ? '"Prendas esculpidas con el ritmo del viento y la textura del lino puro. Caídas que acompañan el andar."' 
-              : '"Plata martillada a mano, capturando destellos de luna fría para reposar suavemente sobre la piel."'}
-          </p>
+        <header className="mb-10 border-b pb-8" style={{ borderColor: 'var(--border-color)' }}>
+          <div className="flex justify-between items-start gap-4 flex-wrap">
+            <div>
+              <span className="text-[10px] tracking-[0.4em] uppercase text-[var(--text-muted)] block mb-2">
+                Colección {roomSlug === 'boutique' ? 'Alta Costura' : 'Plata Fina'}
+              </span>
+              <h2 className="text-4xl md:text-5xl font-serif text-[var(--text-color)] mb-4">
+                {roomSlug === 'boutique' ? 'Boutique' : 'Joyería'}
+              </h2>
+              <p className="text-sm md:text-base text-[var(--text-muted)] font-serif italic max-w-xl font-light">
+                {roomSlug === 'boutique'
+                  ? '"Prendas esculpidas con el ritmo del viento y la textura del lino puro. Caídas que acompañan el andar."'
+                  : '"Plata martillada a mano, capturando destellos de luna fría para reposar suavemente sobre la piel."'}
+              </p>
+            </div>
+
+            {/* P2.2 — Botón de Filtros */}
+            <div className="relative flex-shrink-0 mt-2">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 text-[10px] tracking-widest uppercase border px-4 py-2 transition-all hover:bg-[var(--text-color)] hover:text-[var(--bg-color)]"
+                style={{ borderColor: filterStock !== 'all' ? 'var(--gold-accent)' : 'var(--border-color)', color: filterStock !== 'all' ? 'var(--gold-accent)' : 'var(--text-muted)' }}
+              >
+                <SlidersHorizontal size={11} />
+                <span>Filtrar</span>
+                {filterStock !== 'all' && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--gold-accent)] inline-block" />
+                )}
+              </button>
+
+              {/* Panel de Filtros Desplegable */}
+              {showFilters && (
+                <div
+                  className="absolute right-0 top-full mt-2 z-30 border bg-[var(--bg-color)] shadow-lg p-4 min-w-[200px] animate-fade-in"
+                  style={{ borderColor: 'var(--border-color)' }}
+                >
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-[10px] tracking-widest uppercase text-[var(--text-muted)]">Disponibilidad</span>
+                    <button onClick={() => setShowFilters(false)} className="text-[var(--text-muted)] hover:text-[var(--text-color)]">
+                      <X size={12} />
+                    </button>
+                  </div>
+                  {[
+                    { key: 'all', label: 'Todas las piezas' },
+                    { key: 'available', label: 'Disponibles en Atelier' },
+                    { key: 'sold', label: 'Piezas Adquiridas' },
+                  ].map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => { setFilterStock(key); setShowFilters(false); }}
+                      className="w-full text-left text-xs py-2 px-1 tracking-wide border-b last:border-0 transition-colors hover:text-[var(--gold-accent)]"
+                      style={{
+                        borderColor: 'var(--border-color)',
+                        color: filterStock === key ? 'var(--gold-accent)' : 'var(--text-muted)',
+                        fontWeight: filterStock === key ? '500' : '300'
+                      }}
+                    >
+                      {filterStock === key && '→ '}{label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Contador de resultados cuando hay filtro activo */}
+          {filterStock !== 'all' && (
+            <div className="mt-4 flex items-center gap-3">
+              <span className="text-[10px] tracking-widest text-[var(--text-muted)] uppercase">
+                Mostrando {filteredProducts.length} de {products.length} piezas
+              </span>
+              <button
+                onClick={() => setFilterStock('all')}
+                className="text-[10px] tracking-widest uppercase text-[var(--gold-accent)] hover:underline"
+              >
+                Limpiar filtro
+              </button>
+            </div>
+          )}
         </header>
 
         {/* Rejilla de Productos */}
-        <div className="editorial-grid">
-          {products.map((product) => {
-            const isHovered = hoveredCardId === product.id;
-            // Si el producto tiene múltiples imágenes, mostramos la segunda en hover como detalle macro
-            const mediaUrl = isHovered && product.media_urls.length > 1 
-              ? product.media_urls[1] 
-              : product.media_urls[0];
+        {filteredProducts.length === 0 ? (
+          <div className="py-24 text-center">
+            <p className="text-sm font-serif italic text-[var(--text-muted)] mb-4">
+              "Ninguna pieza corresponde a este filtro en este momento."
+            </p>
+            <button
+              onClick={() => setFilterStock('all')}
+              className="text-[10px] tracking-widest uppercase text-[var(--gold-accent)] hover:underline"
+            >
+              Ver todas las piezas
+            </button>
+          </div>
+        ) : (
+          <div className="editorial-grid">
+            {filteredProducts.map((product) => {
+              const isHovered = hoveredCardId === product.id;
+              const mediaUrl = isHovered && product.media_urls.length > 1
+                ? product.media_urls[1]
+                : product.media_urls[0];
 
-            const isVideo = mediaUrl.match(/\.(mp4|webm|ogg)/i);
+              const isVideo = mediaUrl && mediaUrl.match(/\.(mp4|webm|ogg)/i);
 
-            return (
-              <article
-                key={product.id}
-                onClick={() => handleSelectProduct(product)}
-                onMouseEnter={() => handleCardMouseEnter(product.id)}
-                onMouseLeave={handleCardMouseLeave}
-                className="product-card"
-              >
-                <div className="product-card-media">
-                  {isVideo ? (
-                    <video 
-                      src={mediaUrl} 
-                      className="product-card-image" 
-                      autoPlay 
-                      loop 
-                      muted 
-                      playsInline 
-                    />
-                  ) : (
-                    <img
-                      src={mediaUrl}
-                      alt={product.name}
-                      loading="lazy"
-                      className="product-card-image"
-                    />
-                  )}
-                  
-                  {/* Etiqueta de Agotado */}
-                  {!product.in_stock && (
-                    <div className="absolute inset-0 bg-black/35 backdrop-blur-[1px] flex justify-center items-center">
-                      <span className="text-[10px] tracking-widest uppercase border border-white/40 text-white px-3 py-1 bg-black/40">
-                        Adquirido
-                      </span>
+              return (
+                <article
+                  key={product.id}
+                  onClick={() => handleSelectProduct(product)}
+                  onMouseEnter={() => handleCardMouseEnter(product.id)}
+                  onMouseLeave={handleCardMouseLeave}
+                  className="product-card"
+                >
+                  <div className="product-card-media">
+                    {isVideo ? (
+                      <video
+                        src={mediaUrl}
+                        className="product-card-image"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      <img
+                        src={mediaUrl}
+                        alt={product.name}
+                        loading="lazy"
+                        className="product-card-image"
+                        style={!product.in_stock ? { filter: 'brightness(0.7) grayscale(0.25)' } : undefined}
+                      />
+                    )}
+
+                    {/* P2.5 — Etiqueta de Adquirida (visible pero pieza sigue siendo clicable) */}
+                    {!product.in_stock && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <span className="text-[9px] tracking-widest uppercase border border-[var(--border-color)] text-[var(--text-muted)] px-2 py-0.5 bg-[var(--bg-color)]/90 backdrop-blur-sm">
+                          Adquirida
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Icono de Ver Detalle flotante en hover */}
+                    <div
+                      className={`absolute bottom-4 left-4 p-2 bg-[var(--bg-color)] border text-[var(--text-color)] rounded-full transition-all duration-500 shadow-md ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
+                      style={{ borderColor: 'var(--border-color)' }}
+                    >
+                      <Eye size={12} />
                     </div>
-                  )}
-
-                  {/* Icono de Ver Detalle flotante en hover */}
-                  <div 
-                    className={`absolute bottom-4 left-4 p-2 bg-[var(--bg-color)] border text-[var(--text-color)] rounded-full transition-all duration-500 shadow-md ${
-                      isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-                    }`}
-                    style={{ borderColor: 'var(--border-color)' }}
-                  >
-                    <Eye size={12} />
                   </div>
-                </div>
 
-                <div className="product-card-info">
-                  <h3 className="product-card-name">
-                    {product.name}
-                  </h3>
-                  <span className="product-card-price">
-                    {product.price ? `${parseFloat(product.price).toLocaleString('es-CL')} CLP` : 'Consultar'}
-                  </span>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                  <div className="product-card-info">
+                    <h3 className="product-card-name">
+                      {product.name}
+                    </h3>
+                    <span className="product-card-price">
+                      {product.price
+                        ? `${parseFloat(product.price).toLocaleString('es-CL')} CLP`
+                        : 'Consultar'}
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
 
         {/* Pie de página con enlace al Manifiesto */}
-        <footer className="mt-24 border-t pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] tracking-widest uppercase text-[var(--text-muted)]" style={{ borderColor: 'var(--border-color)' }}>
+        <footer
+          className="mt-24 border-t pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] tracking-widest uppercase text-[var(--text-muted)]"
+          style={{ borderColor: 'var(--border-color)' }}
+        >
           <span>Maison & Atelier © 2026</span>
-          <button 
-            onClick={openManifiesto} 
+          <button
+            onClick={openManifiesto}
             className="hover:text-[var(--gold-accent)] transition-colors flex items-center gap-1.5"
           >
             <Info size={11} />

@@ -124,8 +124,10 @@ export async function getRooms() {
   }
 }
 
-// OBTENER PRODUCTOS POR SALA
-export async function getProductsByRoom(roomSlug) {
+// OBTENER PRODUCTOS POR SALA (con paginación — P3.4)
+const PAGE_SIZE = 48; // Máximo de piezas por página
+
+export async function getProductsByRoom(roomSlug, page = 0) {
   if (!isSupabaseConfigured) {
     return MOCK_PRODUCTS.filter(p => p.room_slug === roomSlug);
   }
@@ -139,11 +141,16 @@ export async function getProductsByRoom(roomSlug) {
 
     if (roomError || !roomData) throw roomError || new Error('Sala no encontrada');
 
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
     const { data, error } = await supabase
       .from('products')
       .select('*')
       .eq('room_id', roomData.id)
-      .order('created_at', { ascending: true });
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .range(from, to);
     
     if (error) throw error;
     // Mapear para asegurar compatibilidad de campos
@@ -156,6 +163,7 @@ export async function getProductsByRoom(roomSlug) {
     return MOCK_PRODUCTS.filter(p => p.room_slug === roomSlug);
   }
 }
+
 
 // OBTENER UN PRODUCTO POR SLUG
 export async function getProductBySlug(slug) {

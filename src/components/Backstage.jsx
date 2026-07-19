@@ -3,7 +3,7 @@ import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { getRooms, getAllProducts } from '../dataService';
 import { 
   Plus, Edit, Trash2, LogOut, Upload, FileText, Layout, 
-  Tag, Image as ImageIcon, CircleDollarSign, Check, X, AlertTriangle, Eye 
+  Tag, Image as ImageIcon, CircleDollarSign, Check, X, AlertTriangle, Eye, CheckCircle, Info
 } from 'lucide-react';
 
 export default function Backstage({ navigateTo }) {
@@ -47,6 +47,26 @@ export default function Backstage({ navigateTo }) {
   // Estado de subida de archivos
   const [uploading, setUploading] = useState(false);
   const [mediaList, setMediaList] = useState([]); // Lista visual de archivos en Storage
+
+  // Sistema de Toast/Modal inline (reemplaza alert/confirm del navegador)
+  const [toast, setToast] = useState(null); // { type: 'success'|'error'|'info', message: string }
+  const [confirmDialog, setConfirmDialog] = useState(null); // { message, onConfirm }
+
+  const showToast = (type, message, duration = 3500) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), duration);
+  };
+
+  const showConfirm = (message, onConfirm) => {
+    setConfirmDialog({ message, onConfirm });
+  };
+
+  const handleConfirmAccept = () => {
+    if (confirmDialog?.onConfirm) confirmDialog.onConfirm();
+    setConfirmDialog(null);
+  };
+
+  const handleConfirmCancel = () => setConfirmDialog(null);
 
   // 1. Manejo del Tema Oscuro (Backstage)
   useEffect(() => {
@@ -166,9 +186,8 @@ export default function Backstage({ navigateTo }) {
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     
-    // Validar datos mínimos
     if (!productForm.name || !productForm.slug || !productForm.poetic_description || !productForm.room_id) {
-      alert('Por favor completa los campos requeridos');
+      showToast('error', 'Completa todos los campos requeridos antes de guardar.');
       return;
     }
 
@@ -200,34 +219,37 @@ export default function Backstage({ navigateTo }) {
           .update(payload)
           .eq('id', editingProduct.id);
         if (error) throw error;
+        showToast('success', 'Pieza actualizada con éxito en el catálogo.');
       } else {
         const { error } = await supabase
           .from('products')
           .insert([payload]);
         if (error) throw error;
+        showToast('success', 'Nueva pieza incorporada al Atelier.');
       }
       resetProductForm();
       loadAllData();
     } catch (err) {
-      alert('Error al guardar producto: ' + err.message);
+      showToast('error', 'Error al guardar pieza: ' + err.message);
     }
   };
 
   const handleDeleteProduct = async (id) => {
-    if (!confirm('¿Deseas retirar esta pieza del Atelier?')) return;
-
-    if (!isSupabaseConfigured) {
-      setProducts(products.filter(p => p.id !== id));
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from('products').delete().eq('id', id);
-      if (error) throw error;
-      loadAllData();
-    } catch (err) {
-      alert('Error al eliminar producto: ' + err.message);
-    }
+    showConfirm('¿Deseas retirar esta pieza del Atelier? Esta acción no puede deshacerse.', async () => {
+      if (!isSupabaseConfigured) {
+        setProducts(products.filter(p => p.id !== id));
+        showToast('success', 'Pieza retirada del catálogo.');
+        return;
+      }
+      try {
+        const { error } = await supabase.from('products').delete().eq('id', id);
+        if (error) throw error;
+        showToast('success', 'Pieza retirada del catálogo.');
+        loadAllData();
+      } catch (err) {
+        showToast('error', 'Error al eliminar: ' + err.message);
+      }
+    });
   };
 
   const startEditProduct = (prod) => {
@@ -262,7 +284,7 @@ export default function Backstage({ navigateTo }) {
   const handleSaveRoom = async (e) => {
     e.preventDefault();
     if (!roomForm.name || !roomForm.slug) {
-      alert('Completa los campos obligatorios');
+      showToast('error', 'Completa los campos obligatorios de la sala.');
       return;
     }
 
@@ -272,6 +294,7 @@ export default function Backstage({ navigateTo }) {
       } else {
         setRooms([...rooms, { ...roomForm, id: `mock-${Date.now()}` }]);
       }
+      showToast('success', 'Sala guardada localmente.');
       resetRoomForm();
       return;
     }
@@ -280,32 +303,35 @@ export default function Backstage({ navigateTo }) {
       if (editingRoom) {
         const { error } = await supabase.from('rooms').update(roomForm).eq('id', editingRoom.id);
         if (error) throw error;
+        showToast('success', 'Sala actualizada en el Vestíbulo.');
       } else {
         const { error } = await supabase.from('rooms').insert([roomForm]);
         if (error) throw error;
+        showToast('success', 'Nueva sala creada en el Vestíbulo.');
       }
       resetRoomForm();
       loadAllData();
     } catch (err) {
-      alert('Error al guardar sala: ' + err.message);
+      showToast('error', 'Error al guardar sala: ' + err.message);
     }
   };
 
   const handleDeleteRoom = async (id) => {
-    if (!confirm('¿Eliminar esta sala? Se perderán todos sus productos.')) return;
-
-    if (!isSupabaseConfigured) {
-      setRooms(rooms.filter(r => r.id !== id));
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from('rooms').delete().eq('id', id);
-      if (error) throw error;
-      loadAllData();
-    } catch (err) {
-      alert('Error al eliminar sala: ' + err.message);
-    }
+    showConfirm('¿Eliminar esta sala? Todos sus productos quedarán sin sala asignada.', async () => {
+      if (!isSupabaseConfigured) {
+        setRooms(rooms.filter(r => r.id !== id));
+        showToast('success', 'Sala eliminada.');
+        return;
+      }
+      try {
+        const { error } = await supabase.from('rooms').delete().eq('id', id);
+        if (error) throw error;
+        showToast('success', 'Sala eliminada del Vestíbulo.');
+        loadAllData();
+      } catch (err) {
+        showToast('error', 'Error al eliminar sala: ' + err.message);
+      }
+    });
   };
 
   const startEditRoom = (room) => {
@@ -355,9 +381,10 @@ export default function Backstage({ navigateTo }) {
       const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(filePath);
 
       updateMediaUrlField(publicUrl, targetField, index);
+      showToast('success', 'Archivo subido al Storage con éxito.');
       loadStorageFiles();
     } catch (err) {
-      alert('Error al subir archivo: ' + err.message);
+      showToast('error', 'Error al subir archivo: ' + err.message);
     } finally {
       setUploading(false);
     }
@@ -372,7 +399,7 @@ export default function Backstage({ navigateTo }) {
       setRoomForm({ ...roomForm, cover_image_url: url });
     } else {
       // Si se sube libremente desde el gestor multimedia
-      alert(`Archivo subido con éxito:\n${url}`);
+      showToast('success', `Archivo subido. URL lista en el portapapeles.`);
     }
   };
 
@@ -471,6 +498,53 @@ export default function Backstage({ navigateTo }) {
   // PANTALLA PRINCIPAL DEL BACKSTAGE
   return (
     <div className="min-h-screen bg-[#121110] text-[#f2ede4] font-light flex flex-col">
+
+      {/* Toast de Notificación Inline (reemplaza alert) */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 border shadow-xl animate-fade-in text-sm ${
+            toast.type === 'success'
+              ? 'border-[var(--gold-accent)]/40 bg-[#1e1d1b] text-[var(--gold-accent)]'
+              : toast.type === 'error'
+              ? 'border-red-900/40 bg-[#1e1d1b] text-red-400'
+              : 'border-[#2d2b28] bg-[#1e1d1b] text-gray-300'
+          }`}
+        >
+          {toast.type === 'success' && <Check size={15} />}
+          {toast.type === 'error' && <AlertTriangle size={15} />}
+          {toast.type === 'info' && <Eye size={15} />}
+          <span className="text-xs tracking-wide">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="ml-2 opacity-50 hover:opacity-100">
+            <X size={12} />
+          </button>
+        </div>
+      )}
+
+      {/* Diálogo de Confirmación Inline (reemplaza confirm) */}
+      {confirmDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-only">
+          <div className="w-full max-w-md p-8 border border-[#2d2b28] bg-[#171615] shadow-2xl animate-fade-in">
+            <div className="flex items-start gap-4 mb-8">
+              <AlertTriangle size={20} className="text-[var(--gold-accent)] shrink-0 mt-0.5" />
+              <p className="text-sm text-gray-300 leading-relaxed">{confirmDialog.message}</p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleConfirmCancel}
+                className="px-4 py-2 border border-[#2d2b28] text-xs uppercase tracking-widest text-gray-400 hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmAccept}
+                className="px-5 py-2 bg-red-950 border border-red-900/60 text-red-400 text-xs uppercase tracking-widest hover:bg-red-900/40 transition-colors"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Cabecera Backstage */}
       <header className="border-b border-[#2d2b28] py-4 px-8 md:px-12 flex justify-between items-center bg-[#171615]">
         <div className="flex items-center gap-3">
@@ -1010,7 +1084,7 @@ export default function Backstage({ navigateTo }) {
                         <button 
                           onClick={() => {
                             navigator.clipboard.writeText(file.url);
-                            alert('Enlace copiado al portapapeles!');
+                            showToast('success', 'Enlace copiado al portapapeles.');
                           }}
                           className="mt-2 text-[9px] tracking-widest uppercase text-[var(--gold-accent)] hover:underline block text-left"
                         >
