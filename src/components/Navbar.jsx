@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getMuteState, setMuteState } from '../audioEffects';
-import { Volume2, VolumeX, Menu, X, Landmark, Compass, Eye, Shield } from 'lucide-react';
+import { Volume2, VolumeX, Menu, X, Landmark, Compass } from 'lucide-react';
 
 export default function Navbar({ navigateTo, currentPath, openManifiesto }) {
   const [isMuted, setIsMuted] = useState(getMuteState());
@@ -100,15 +100,6 @@ export default function Navbar({ navigateTo, currentPath, openManifiesto }) {
             El Manifiesto
           </button>
 
-          <button 
-            onClick={() => navigateTo('backstage')}
-            className={`hover:text-[var(--gold-accent)] transition-colors flex items-center gap-1 ${
-              currentPath === 'backstage' ? 'text-[var(--gold-accent)]' : 'text-[var(--text-muted)]'
-            }`}
-          >
-            <Shield size={12} />
-            Backstage
-          </button>
         </div>
 
         {/* Controles de sonido y menú móvil */}
@@ -158,12 +149,6 @@ export default function Navbar({ navigateTo, currentPath, openManifiesto }) {
             className="hover:text-[var(--gold-accent)]"
           >
             El Manifiesto
-          </button>
-          <button 
-            onClick={() => { navigateTo('backstage'); setMobileMenuOpen(false); }}
-            className="hover:text-[var(--gold-accent)]"
-          >
-            Backstage
           </button>
         </div>
       )}

@@ -74,10 +74,19 @@ export default function Lookbook({ roomSlug, navigateTo, openManifiesto }) {
     setHoveredCardId(null);
   };
 
+  // Saludo dinámico según la hora del día para el Concierge Digital
+  const getDynamicGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Buenos días';
+    if (hour >= 12 && hour < 20) return 'Buenas tardes';
+    return 'Buenas noches';
+  };
+
   // Enlace dinámico de WhatsApp para el Concierge Digital
   const buildWhatsAppLink = (product) => {
     const phone = import.meta.env.VITE_WHATSAPP_PHONE || '56912345678';
-    const elegantGreeting = "Buenos días, deseo consultar con una asesora sobre la pieza de su Atelier:";
+    const greeting = getDynamicGreeting();
+    const elegantGreeting = `${greeting}, deseo consultar con una asesora sobre la pieza de su Atelier:`;
     const prodName = product.name;
     const roomName = roomSlug === 'boutique' ? 'Alta Costura' : 'Joyería';
     const imageUrl = product.media_urls[0] || '';
@@ -231,8 +240,11 @@ export default function Lookbook({ roomSlug, navigateTo, openManifiesto }) {
                 src={currentMediaUrl}
                 alt={selectedProduct.name}
                 loading="lazy"
-                className="w-full h-full object-cover transition-opacity duration-1000 opacity-85 hover:scale-[1.03] transition-transform duration-[3000ms]"
-                style={{ filter: 'contrast(1.02) brightness(0.95)' }}
+                className="w-full h-full object-cover opacity-85"
+                style={{ 
+                  filter: 'contrast(1.02) brightness(0.95)',
+                  transition: 'opacity 1s ease, transform 3s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}
               />
             )}
             

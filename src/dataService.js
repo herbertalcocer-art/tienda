@@ -26,7 +26,7 @@ const MOCK_PRODUCTS = [
     name: 'El Hilo del Silencio',
     slug: 'el-hilo-del-silencio',
     poetic_description: 'Tejido en lino natural crudo. Un vestido que no busca vestir, sino acompañar el susurro del viento. La caída descansa con la imperfección sagrada de las fibras orgánicas, envolviendo el cuerpo en un abrazo etéreo y pausado.',
-    price: 340.00,
+    price: 340000.00,
     media_urls: [
       'https://images.unsplash.com/photo-1595959183075-c1d0a174d263?q=80&w=1200',
       'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1200'
@@ -40,7 +40,7 @@ const MOCK_PRODUCTS = [
     name: 'Eco del Viento',
     slug: 'eco-del-viento',
     poetic_description: 'Lana tejida a mano en telares ancestrales. Su textura evoca la aspereza de la roca y la calidez del hogar. Una pieza de abrigo pesado pero blando, que cae como la niebla de la mañana sobre los hombros de quien contempla la inmensidad.',
-    price: 260.00,
+    price: 260000.00,
     media_urls: [
       'https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=1200',
       'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1200'
@@ -54,7 +54,7 @@ const MOCK_PRODUCTS = [
     name: 'Vestido Penumbras',
     slug: 'vestido-penumbras',
     poetic_description: 'Seda teñida con pigmentos minerales oscuros. Su textura es el reflejo del agua estancada a la luz de la luna. Una caricia fría que acompaña los movimientos lentos y pausados, dibujando sombras que danzan sobre la piel.',
-    price: 410.00,
+    price: 410000.00,
     media_urls: [
       'https://images.unsplash.com/photo-1539008885868-24859a72e775?q=80&w=1200',
       'https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1200'
@@ -68,7 +68,7 @@ const MOCK_PRODUCTS = [
     name: 'Luna Rota',
     slug: 'luna-rota',
     poetic_description: 'Anillo esculpido en plata de ley 950. Sus bordes irregulares y martillados a mano evocan el relieve de una luna agrietada por el paso del tiempo. No busca el reflejo perfecto, sino la belleza honesta de lo inacabado.',
-    price: 180.00,
+    price: 180000.00,
     media_urls: [
       'https://images.unsplash.com/photo-1605100804763-247f67b3557e?q=80&w=1200',
       'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?q=80&w=1200'
@@ -82,7 +82,7 @@ const MOCK_PRODUCTS = [
     name: 'Rocío Inmóvil',
     slug: 'rocio-inmovil',
     poetic_description: 'Pendientes formados por la solidificación fortuita del metal líquido. Dos lágrimas de plata que cuelgan del lóbulo como gotas de agua congeladas en el instante exacto de su desprendimiento, capturando el eterno invierno del metal.',
-    price: 220.00,
+    price: 220000.00,
     media_urls: [
       'https://images.unsplash.com/photo-1630019852942-f89202989a59?q=80&w=1200',
       'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=1200'
@@ -96,7 +96,7 @@ const MOCK_PRODUCTS = [
     name: 'Cicatriz de Luz',
     slug: 'cicatriz-luz',
     poetic_description: 'Brazalete rígido de diseño abierto. El metal ha sido oxidado deliberadamente en sus fisuras para resaltar la cicatriz del fuego en la plata. Una pieza rotunda, un fragmento de luz sólida que abraza la muñeca con fuerza y sobriedad.',
-    price: 290.00,
+    price: 290000.00,
     media_urls: [
       'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=1200',
       'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?q=80&w=1200'
